@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // User profile validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'defaultModel', 'defaultProvider', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid.size() <= 128
+        && data.email is string && data.email.size() <= 256;
+    }
+
+    // Conversation validation
+    function isValidConversation(data) {
+      return data.keys().hasAll(['id', 'userId', 'title'])
+        && data.keys().hasOnly(['id', 'userId', 'title', 'model', 'provider', 'systemPrompt', 'isPinned', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.userId == request.auth.uid
+        && data.title is string && data.title.size() <= 256;
+    }
+
+    // Message validation
+    function isValidMessage(data) {
+      return data.keys().hasAll(['id', 'conversationId', 'userId', 'role', 'content'])
+        && data.keys().hasOnly(['id', 'conversationId', 'userId', 'role', 'content', 'modelUsed', 'providerUsed', 'attachments', 'reasoning', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.conversationId is string && data.conversationId.size() <= 128
+        && data.userId == request.auth.uid
+        && data.role in ['user', 'assistant', 'system']
+        && data.content is string && data.content.size() <= 65536;
+    }
+
+    // Memory validation
+    function isValidMemory(data) {
+      return data.keys().hasAll(['id', 'userId', 'category', 'content'])
+        && data.keys().hasOnly(['id', 'userId', 'category', 'content', 'tags', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.userId == request.auth.uid
+        && data.category in ['preference', 'project', 'fact', 'custom']
+        && data.content is string && data.content.size() <= 2048;
+    }
+
+    // Creator Artifact validation
+    function isValidArtifact(data) {
+      return data.keys().hasAll(['id', 'userId', 'type', 'title'])
+        && data.keys().hasOnly(['id', 'userId', 'type', 'title', 'prompt', 'content', 'mediaUrl', 'metadata', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.userId == request.auth.uid
+        && data.type in ['script', 'youtube', 'image', 'video', 'voice', 'agent_task']
+        && data.title is string && data.title.size() <= 256;
+    }
+
+    // File metadata validation
+    function isValidFile(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'mimeType'])
+        && data.keys().hasOnly(['id', 'userId', 'name', 'mimeType', 'size', 'extractedText', 'projectId', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.userId == request.auth.uid
+        && data.name is string && data.name.size() <= 256
+        && data.mimeType is string && data.mimeType.size() <= 128;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Disallow querying all users
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.uid == userId;
+      allow delete: if isOwner(userId);
+    }
+
+    // Conversations collection
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(conversationId) && isValidConversation(request.resource.data);
+      allow update: if isSignedIn() && isValidId(conversationId) && resource.data.userId == request.auth.uid && isValidConversation(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isValidId(conversationId) && resource.data.userId == request.auth.uid;
+
+      // Subcollection: Messages
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(messageId) && resource.data.userId == request.auth.uid;
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() && isValidId(messageId)
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.userId == request.auth.uid
+          && isValidMessage(request.resource.data);
+        allow update: if isSignedIn() && isValidId(messageId) && resource.data.userId == request.auth.uid && isValidMessage(request.resource.data);
+        allow delete: if isSignedIn() && isValidId(messageId) && resource.data.userId == request.auth.uid;
+      }
+    }
+
+    // Memories collection
+    match /memories/{memoryId} {
+      allow get: if isSignedIn() && isValidId(memoryId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(memoryId) && isValidMemory(request.resource.data);
+      allow update: if isSignedIn() && isValidId(memoryId) && resource.data.userId == request.auth.uid && isValidMemory(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isValidId(memoryId) && resource.data.userId == request.auth.uid;
+    }
+
+    // Creator Artifacts collection
+    match /creatorArtifacts/{artifactId} {
+      allow get: if isSignedIn() && isValidId(artifactId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(artifactId) && isValidArtifact(request.resource.data);
+      allow update: if isSignedIn() && isValidId(artifactId) && resource.data.userId == request.auth.uid && isValidArtifact(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isValidId(artifactId) && resource.data.userId == request.auth.uid;
+    }
+
+    // Files metadata collection
+    match /files/{fileId} {
+      allow get: if isSignedIn() && isValidId(fileId) && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(fileId) && isValidFile(request.resource.data);
+      allow update: if isSignedIn() && isValidId(fileId) && resource.data.userId == request.auth.uid && isValidFile(request.resource.data) && request.resource.data.userId == resource.data.userId;
+      allow delete: if isSignedIn() && isValidId(fileId) && resource.data.userId == request.auth.uid;
+    }
+  }
+}

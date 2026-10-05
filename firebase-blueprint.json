@@ -1,0 +1,129 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "User account profile and preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "defaultModel": { "type": "string", "maxLength": 64 },
+        "defaultProvider": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "conversations": {
+      "title": "Chat Conversation",
+      "description": "AI Chat conversation thread",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "model": { "type": "string", "maxLength": 64 },
+        "provider": { "type": "string", "maxLength": 64 },
+        "systemPrompt": { "type": "string", "maxLength": 4096 },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title"]
+    },
+    "messages": {
+      "title": "Chat Message",
+      "description": "Message in an AI conversation thread",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "conversationId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+        "content": { "type": "string", "maxLength": 65536 },
+        "modelUsed": { "type": "string", "maxLength": 64 },
+        "providerUsed": { "type": "string", "maxLength": 64 },
+        "attachments": { "type": "string", "maxLength": 8192 },
+        "reasoning": { "type": "string", "maxLength": 32768 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "conversationId", "userId", "role", "content"]
+    },
+    "memories": {
+      "title": "AI Memory",
+      "description": "User memory and context item for personalized AI",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "enum": ["preference", "project", "fact", "custom"] },
+        "content": { "type": "string", "maxLength": 2048 },
+        "tags": { "type": "string", "maxLength": 512 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "category", "content"]
+    },
+    "creatorArtifacts": {
+      "title": "Creator Studio Artifact",
+      "description": "Generated scripts, YouTube briefs, images, audio, and videos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "enum": ["script", "youtube", "image", "video", "voice", "agent_task"] },
+        "title": { "type": "string", "maxLength": 256 },
+        "prompt": { "type": "string", "maxLength": 4096 },
+        "content": { "type": "string", "maxLength": 131072 },
+        "mediaUrl": { "type": "string", "maxLength": 4096 },
+        "metadata": { "type": "string", "maxLength": 8192 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "title"]
+    },
+    "files": {
+      "title": "Uploaded Document or File",
+      "description": "Metadata for user documents uploaded for AI analysis",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 256 },
+        "size": { "type": "number" },
+        "mimeType": { "type": "string", "maxLength": 128 },
+        "extractedText": { "type": "string", "maxLength": 131072 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "mimeType"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile collection"
+    },
+    "/conversations/{conversationId}": {
+      "schema": "conversations",
+      "description": "User conversations"
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "messages",
+      "description": "Messages within a conversation"
+    },
+    "/memories/{memoryId}": {
+      "schema": "memories",
+      "description": "User stored memory context"
+    },
+    "/creatorArtifacts/{artifactId}": {
+      "schema": "creatorArtifacts",
+      "description": "Creator studio items, YouTube briefs, images, audio, video"
+    },
+    "/files/{fileId}": {
+      "schema": "files",
+      "description": "Uploaded user documents and files metadata"
+    }
+  }
+}
