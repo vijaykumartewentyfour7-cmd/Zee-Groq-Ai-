@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, ThinkingLevel, GenerateVideosOperation } from '@google/genai';
+import { globalModelRouter } from './src/server/providers/router';
+import { CLAUDE_MODELS } from './src/server/providers/anthropic';
 
 dotenv.config();
 

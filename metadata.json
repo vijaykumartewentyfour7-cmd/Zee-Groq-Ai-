@@ -2,5 +2,7 @@
   "name": "Zee Grok AI",
   "description": "Mobile-first all-in-one AI Assistant, Multi-Model AI Engine, and AI Creator Studio.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

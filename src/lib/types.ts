@@ -33,6 +33,7 @@ export interface ChatMessageAttachment {
   mimeType: string;
   data: string; // base64
   size?: number;
+  content?: string;
 }
 
 export interface ChatMessage {
